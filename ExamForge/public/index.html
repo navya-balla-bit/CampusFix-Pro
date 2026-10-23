@@ -1,0 +1,290 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ExamForge - Online Examination Platform</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#f5f6fc;color:#252545;line-height:1.6}
+.navbar{display:flex;justify-content:space-between;align-items:center;padding:18px 7%;background:white;border-bottom:1px solid #e5e7f0}
+.logo{color:#635bdb;font-size:27px;font-weight:bold}
+.online{color:#16834a;font-size:14px;font-weight:bold}
+.hero{max-width:1100px;margin:32px auto;padding:42px;border-radius:18px;color:white;background:linear-gradient(120deg,#5146d8,#9585f6)}
+.hero h1{font-size:34px;margin-bottom:12px}
+main{max-width:1100px;margin:auto;padding:0 22px 45px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-bottom:35px}
+.stat,.exam-card,.question-card,.result-card{background:white;border:1px solid #e5e7f0;border-radius:14px;padding:24px;box-shadow:0 5px 18px #2323500a}
+.stat p,.exam-card p{color:#737991;margin-bottom:8px}
+.stat h2{font-size:28px}
+.section-title{margin-bottom:18px}
+.exam-list{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.tag{display:inline-block;background:#eeedff;color:#635bdb;padding:5px 10px;border-radius:6px;font-size:12px;font-weight:bold;margin-bottom:15px}
+.exam-card h3{margin-bottom:12px}
+button{border:0;border-radius:8px;padding:12px 18px;font-size:15px;font-weight:bold;cursor:pointer;margin:4px 4px 4px 0}
+button:hover{opacity:.88}
+.primary-btn{background:#635bdb;color:white}
+.secondary-btn{background:#ecebff;color:#5146d8}
+.exam-page{max-width:850px;margin:30px auto;padding:20px}
+.exam-top{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;margin:22px 0}
+.timer{background:#fff0f0;color:#c0392b;border-radius:8px;padding:10px 16px;font-weight:bold}
+.question-card{margin:18px 0}
+.question-card h3{margin-bottom:15px}
+.option{display:flex;gap:10px;padding:12px;margin:8px 0;background:#f8f8fd;border-radius:8px;cursor:pointer}
+.option:hover{background:#efeeff}
+.option input{margin-top:6px}
+.result-card{text-align:center;margin-top:25px;padding:35px 25px}
+.score{font-size:40px;color:#635bdb;font-weight:bold;margin:12px}
+.footer{text-align:center;padding:25px;color:#85899c;font-size:13px}
+@media(max-width:750px){.exam-list,.stats{grid-template-columns:1fr}.hero{margin:20px 15px;padding:26px}.hero h1{font-size:27px}.navbar{padding:16px 20px}}
+</style>
+</head>
+<body>
+<header class="navbar">
+  <div class="logo">ExamForge.</div>
+  <div class="online">● Online</div>
+</header>
+<div id="app"></div>
+<footer class="footer">ExamForge — Online Examination Platform</footer>
+
+<script>
+const examData = [
+  {
+    id:1,title:"Java Fundamentals",duration:5,
+    questions:[
+      {question:"Which keyword is used to declare a class in Java?",options:["function","class","define","struct"],answer:1},
+      {question:"Which method is the entry point of a Java program?",options:["start()","run()","main()","init()"],answer:2},
+      {question:"Which data type stores true or false?",options:["int","String","boolean","char"],answer:2},
+      {question:"Which keyword creates an object in Java?",options:["create","new","object","make"],answer:1},
+      {question:"Java is primarily a ______ language.",options:["Markup","Programming","Query","Styling"],answer:1}
+    ]
+  },
+  {
+    id:2,title:"Web Development Basics",duration:5,
+    questions:[
+      {question:"Which language structures a web page?",options:["HTML","SQL","Java","C"],answer:0},
+      {question:"Which language styles a web page?",options:["Python","CSS","C++","SQL"],answer:1},
+      {question:"Which language adds interactivity to a web page?",options:["HTML only","CSS only","JavaScript","XML"],answer:2},
+      {question:"Which HTML tag creates a hyperlink?",options:["link","a","href","url"],answer:1},
+      {question:"Which HTML tag displays an image?",options:["image","pic","img","src"],answer:2}
+    ]
+  },
+  {
+    id:3,title:"Database Management",duration:5,
+    questions:[
+      {question:"What does SQL stand for?",options:["Structured Query Language","Simple Question Language","System Quick Logic","Standard Queue List"],answer:0},
+      {question:"Which SQL command retrieves data?",options:["GET","SELECT","PUSH","OPEN"],answer:1},
+      {question:"Which key uniquely identifies a row?",options:["Foreign key","Duplicate key","Primary key","Common key"],answer:2},
+      {question:"Which command adds a new row to a table?",options:["INSERT","REMOVE","FETCH","ALTER"],answer:0},
+      {question:"Which command modifies existing records?",options:["CHANGE","UPDATE","RENAME","SELECT"],answer:1}
+    ]
+  }
+];
+
+let currentExam=null;
+let timerInterval=null;
+let secondsRemaining=0;
+let submitted=false;
+
+function showDashboard(){
+  clearInterval(timerInterval);
+  currentExam=null;
+  submitted=false;
+  document.getElementById("app").innerHTML=`
+    <section class="hero">
+      <h1>Welcome to ExamForge!</h1>
+      <p>Test your knowledge, practise your skills, and track your performance with our online examination platform.</p>
+    </section>
+    <main>
+      <section class="stats">
+        <article class="stat"><p>Available Exams</p><h2>3</h2></article>
+        <article class="stat"><p>Total Questions</p><h2>15</h2></article>
+        <article class="stat"><p>Exam Status</p><h2 style="color:#16834a">Ready</h2></article>
+      </section>
+      <h2 class="section-title">Available Examinations</h2>
+      <section class="exam-list">
+        ${examData.map(exam=>`
+          <article class="exam-card">
+            <span class="tag">ONLINE EXAM</span>
+            <h3>${exam.title}</h3>
+            <p>Duration: ${exam.duration} minutes</p>
+            <p>Questions: ${exam.questions.length}</p>
+            <button class="primary-btn" onclick="selectExam(${exam.id})">Start Exam →</button>
+          </article>`).join("")}
+      </section>
+      <section class="result-card">
+        <h2>Previous Exam Results</h2>
+        <p>Results saved on the server will appear here.</p>
+        <button class="secondary-btn" onclick="viewResults()">View Saved Results</button>
+        <div id="savedResults"></div>
+      </section>
+    </main>`;
+}
+
+function selectExam(id){
+  const exam=examData.find(item=>item.id===id);
+  if(!exam){alert("Exam not found!");return}
+  currentExam=exam;
+  submitted=false;
+  secondsRemaining=exam.duration*60;
+  renderExam();
+  startTimer();
+  window.scrollTo(0,0);
+}
+
+function renderExam(){
+  const exam=currentExam;
+  document.getElementById("app").innerHTML=`
+    <main class="exam-page">
+      <button class="secondary-btn" onclick="confirmBack()">← Back to Dashboard</button>
+      <div class="exam-top">
+        <div><h1>${exam.title}</h1><p>${exam.questions.length} questions · ${exam.duration} minutes</p></div>
+        <div class="timer" id="timer">Time: ${formatTime(secondsRemaining)}</div>
+      </div>
+      <div id="examContent">
+        <form id="examForm">
+          ${exam.questions.map((q,i)=>`
+            <section class="question-card">
+              <h3>${i+1}. ${q.question}</h3>
+              ${q.options.map((option,j)=>`
+                <label class="option">
+                  <input type="radio" name="q${i}" value="${j}">
+                  <span>${escapeHTML(option)}</span>
+                </label>`).join("")}
+            </section>`).join("")}
+          <button type="submit" class="primary-btn">Submit Exam</button>
+        </form>
+      </div>
+    </main>`;
+  document.getElementById("examForm").addEventListener("submit",event=>{
+    event.preventDefault();
+    submitExam();
+  });
+}
+
+function startTimer(){
+  clearInterval(timerInterval);
+  timerInterval=setInterval(()=>{
+    if(submitted){clearInterval(timerInterval);return}
+    secondsRemaining--;
+    const timer=document.getElementById("timer");
+    if(timer)timer.textContent="Time: "+formatTime(Math.max(0,secondsRemaining));
+    if(secondsRemaining<=0)submitExam();
+  },1000);
+}
+
+function formatTime(seconds){
+  const mins=Math.floor(seconds/60);
+  const secs=seconds%60;
+  return String(mins).padStart(2,"0")+":"+String(secs).padStart(2,"0");
+}
+
+async function submitExam(){
+  if(submitted||!currentExam)return;
+  submitted=true;
+  clearInterval(timerInterval);
+
+  let score=0;
+  let answered=0;
+
+  currentExam.questions.forEach((question,i)=>{
+    const selected=document.querySelector(`input[name="q${i}"]:checked`);
+    if(selected){
+      answered++;
+      if(Number(selected.value)===question.answer)score++;
+    }
+  });
+
+  const total=currentExam.questions.length;
+  const percentage=Math.round((score/total)*100);
+  const examId=currentExam.id;
+  const examTitle=currentExam.title;
+
+  document.getElementById("examContent").innerHTML=`
+    <section class="result-card"><h2>Saving Your Result...</h2><p>Please wait.</p></section>`;
+
+  let saveMessage="";
+  try{
+    const response=await fetch("/api/results",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({examId,examTitle,score,total,percentage,answered})
+    });
+    const data=await response.json();
+    if(!response.ok||!data.success)throw new Error(data.message||"Could not save result.");
+    saveMessage="Result saved successfully to the server!";
+  }catch(error){
+    console.error("Result saving error:",error);
+    saveMessage="Result could not be saved. Please check the server and try again.";
+  }
+
+  document.getElementById("examContent").innerHTML=`
+    <section class="result-card">
+      <h2>Exam Submitted!</h2>
+      <p class="score">${score} / ${total}</p>
+      <h3>${percentage}% Score</h3>
+      <p style="margin:12px 0">
+        Correct answers: ${score}<br>
+        Incorrect or unanswered: ${total-score}<br>
+        Questions answered: ${answered} / ${total}
+      </p>
+      <p style="margin:12px 0">${saveMessage}</p>
+      <button class="primary-btn" onclick="showDashboard()">Back to Dashboard</button>
+      <button class="secondary-btn" onclick="selectExam(${examId})">Try Again</button>
+      <button class="secondary-btn" onclick="viewResults()">View Saved Results</button>
+    </section>`;
+  window.scrollTo(0,0);
+}
+
+async function viewResults(){
+  clearInterval(timerInterval);
+  currentExam=null;
+  submitted=false;
+  document.getElementById("app").innerHTML=`
+    <main class="exam-page">
+      <button class="secondary-btn" onclick="showDashboard()">← Dashboard</button>
+      <section class="result-card">
+        <h1>Saved Exam Results</h1>
+        <p id="resultsStatus">Loading results...</p>
+        <div id="resultsList"></div>
+      </section>
+    </main>`;
+  try{
+    const response=await fetch("/api/results");
+    const data=await response.json();
+    if(!response.ok||!data.success)throw new Error("Could not load results.");
+    const list=document.getElementById("resultsList");
+    const status=document.getElementById("resultsStatus");
+    if(!data.results||data.results.length===0){
+      status.textContent="No results saved yet. Complete an exam first.";
+      return;
+    }
+    status.textContent=`Total saved attempts: ${data.results.length}`;
+    list.innerHTML=data.results.slice().reverse().map(result=>`
+      <article class="question-card" style="text-align:left">
+        <h3>${escapeHTML(result.examTitle)}</h3>
+        <p>Score: ${result.score}/${result.total} (${result.percentage}%)</p>
+        <p>Questions answered: ${result.answered}/${result.total}</p>
+        <p>Submitted: ${escapeHTML(new Date(result.submittedAt).toLocaleString())}</p>
+      </article>`).join("");
+  }catch(error){
+    document.getElementById("resultsStatus").textContent=
+      "Could not load results. Check that your updated server is running.";
+  }
+}
+
+function confirmBack(){
+  if(submitted||confirm("Leave this exam? Your current answers will be lost."))showDashboard();
+}
+
+function escapeHTML(value){
+  return String(value).replace(/[&<>"']/g,char=>({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+  })[char]);
+}
+
+showDashboard();
+</script>
+</body>
+</html>

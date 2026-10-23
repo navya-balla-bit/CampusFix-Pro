@@ -1,0 +1,182 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ExamForge | Performance Dashboard</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#f4f6fb;color:#172033}
+header{background:#101a35;color:white;padding:24px 7%;display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap}
+header h1{margin:0;font-size:27px}
+header p{margin:7px 0 0;color:#c5cee4}
+a,button{cursor:pointer}
+.back{color:white;text-decoration:none;border:1px solid #64748b;padding:11px 16px;border-radius:9px}
+main{max-width:1150px;margin:35px auto;padding:0 20px}
+.heading{display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap}
+.heading h2{margin-bottom:6px}
+.muted{color:#69758c}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:18px;margin:25px 0}
+.card{background:white;border:1px solid #e4e8f1;border-radius:16px;padding:23px;box-shadow:0 5px 18px #17203308}
+.card .label{color:#69758c;font-size:14px}
+.card .value{font-size:32px;font-weight:700;margin:14px 0 8px;color:#243c91}
+.card small{color:#7c879b}
+.panel{background:white;border:1px solid #e4e8f1;border-radius:16px;padding:23px;margin-top:24px;overflow:hidden}
+.panel h3{margin-top:0}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:600px}
+th,td{text-align:left;padding:14px 12px;border-bottom:1px solid #edf0f6;font-size:14px}
+th{color:#69758c;background:#f8f9fc}
+.score{font-weight:bold;color:#16845b}
+.btn{border:0;border-radius:9px;background:#344bc1;color:white;padding:11px 16px;font-weight:bold}
+.btn:hover{background:#25389e}
+.empty{text-align:center;padding:35px 10px;color:#69758c}
+.status{margin:15px 0;color:#69758c;font-size:14px}
+footer{text-align:center;color:#8791a4;padding:30px}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>ExamForge</h1>
+    <p>Your exam performance, all in one place.</p>
+  </div>
+  <a class="back" href="/">← Back to Exams</a>
+</header>
+
+<main>
+  <div class="heading">
+    <div>
+      <h2>Performance Dashboard</h2>
+      <p class="muted">Track your progress and review previous attempts.</p>
+    </div>
+    <button class="btn" id="refreshBtn">↻ Refresh Results</button>
+  </div>
+
+  <div class="cards">
+    <div class="card">
+      <div class="label">Total Exams Attempted</div>
+      <div class="value" id="totalExams">—</div>
+      <small>Your saved exam attempts</small>
+    </div>
+    <div class="card">
+      <div class="label">Average Percentage</div>
+      <div class="value" id="averageScore">—</div>
+      <small>Average across all attempts</small>
+    </div>
+    <div class="card">
+      <div class="label">Best Percentage</div>
+      <div class="value" id="bestScore">—</div>
+      <small>Your highest recorded percentage</small>
+    </div>
+    <div class="card">
+      <div class="label">Total Correct Answers</div>
+      <div class="value" id="totalCorrect">—</div>
+      <small>Across all saved attempts</small>
+    </div>
+  </div>
+
+  <section class="panel">
+    <h3>Previous Exam Results</h3>
+    <p class="muted">Your saved attempts will appear here automatically.</p>
+    <div id="status" class="status">Loading results...</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Exam</th>
+            <th>Score</th>
+            <th>Percentage</th>
+            <th>Answered</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody id="resultsBody"></tbody>
+      </table>
+    </div>
+    <div id="emptyState" class="empty" hidden>
+      No saved results yet. Complete an exam and submit your answers first.
+    </div>
+  </section>
+</main>
+
+<footer>ExamForge · Learn, Practice, Improve.</footer>
+
+<script>
+const $ = id => document.getElementById(id);
+
+async function loadResults() {
+  $("status").textContent = "Loading results...";
+  $("refreshBtn").disabled = true;
+
+  try {
+    const response = await fetch("/api/results");
+    if (!response.ok) throw new Error("Server returned " + response.status);
+
+    const data = await response.json();
+    if (!data.success || !Array.isArray(data.results)) {
+      throw new Error("Unexpected results response");
+    }
+
+    const results = data.results;
+    const percentages = results.map(r => {
+      const p = Number(r.percentage);
+      if (Number.isFinite(p)) return p;
+      const score = Number(r.score);
+      const total = Number(r.total);
+      return total > 0 ? score / total * 100 : 0;
+    });
+
+    $("totalExams").textContent = results.length;
+    $("averageScore").textContent = results.length
+      ? (percentages.reduce((a,b) => a+b, 0) / results.length).toFixed(1) + "%"
+      : "0%";
+    $("bestScore").textContent = results.length
+      ? Math.max(...percentages).toFixed(1) + "%"
+      : "0%";
+    $("totalCorrect").textContent = results.reduce(
+      (sum, r) => sum + (Number(r.score) || 0), 0
+    );
+
+    const body = $("resultsBody");
+    body.replaceChildren();
+
+    [...results].reverse().forEach((r, index) => {
+      const tr = document.createElement("tr");
+      const values = [
+        r.examTitle || ("Exam " + (r.examId ?? "")),
+        (Number(r.score) || 0) + " / " + (Number(r.total) || 0),
+        percentages[results.length - 1 - index].toFixed(1) + "%",
+        (Number(r.answered) || 0) + " / " + (Number(r.total) || 0),
+        r.submittedAt ? new Date(r.submittedAt).toLocaleString() : "—"
+      ];
+
+      values.forEach((value, i) => {
+        const td = document.createElement("td");
+        td.textContent = value;
+        if (i === 2) td.className = "score";
+        tr.appendChild(td);
+      });
+      body.appendChild(tr);
+    });
+
+    $("emptyState").hidden = results.length !== 0;
+    document.querySelector(".table-wrap").style.display =
+      results.length ? "block" : "none";
+    $("status").textContent = results.length
+      ? "Showing " + results.length + " saved attempt(s)."
+      : "No saved exam attempts found.";
+  } catch (error) {
+    $("status").textContent =
+      "Could not load results. Make sure the ExamForge server is running.";
+    console.error(error);
+  } finally {
+    $("refreshBtn").disabled = false;
+  }
+}
+
+$("refreshBtn").addEventListener("click", loadResults);
+loadResults();
+</script>
+</body>
+</html>
